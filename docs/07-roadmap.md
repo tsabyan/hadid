@@ -39,14 +39,14 @@ The gallery route is not optional. Without it, component states get discovered i
 
 ## Phase 2 — Data layer
 
-- [ ] Migrations `0001`–`0011` written and pushed
-- [ ] RLS policies on every table, verified by trying to read another user's rows
-- [ ] Seed data: 18 muscle groups, ~200 exercises, ~600 muscle mappings, 24 badges
-- [ ] `types/database.ts` generated
-- [ ] Supabase clients: browser, server, middleware
-- [ ] `lib/db/queries.ts` and `lib/db/mutations.ts` typed
-- [ ] Anonymous auth flow working end to end
-- [ ] Calc modules with unit tests: `volume` · `prs` · `streaks` · `muscle-load` · `units`
+- [x] Migrations `0001`–`0011` written
+- [ ] RLS policies written for every table — **still to verify** by reading another user's rows
+- [x] Seed data: 18 muscle groups, 115 exercises, 295 muscle mappings, 24 badges — generated from `data/*.ts`
+- [x] `types/database.ts` — hand-written to match the migrations; regenerate from the dashboard after any schema change
+- [x] Supabase clients: browser, server, proxy
+- [x] `lib/db/queries.ts` and `lib/db/mutations.ts` typed
+- [ ] Anonymous auth — `lib/auth.ts` written, **not yet exercised** against the live project
+- [x] Calc modules with unit tests: `volume` · `prs` · `streaks` · `muscle-load` · `units` (32 tests)
 
 **Done when:** two anonymous sessions cannot see each other's data — tested, not assumed — and the calc functions pass their tests.
 

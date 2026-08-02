@@ -35,6 +35,7 @@ Extends `auth.users`. Created by trigger on signup.
 | `onboarded` | `boolean` | default `false` |
 | `theme` | `text` | `'system'` \| `'light'` \| `'dark'` |
 | `week_starts_on` | `int` | `0`=Sun, `1`=Mon; default `1` |
+| `timezone` | `text` | IANA zone, default `'UTC'`. Captured at onboarding — streak day boundaries are wrong in an undebuggable way without it |
 | `created_at` / `updated_at` | `timestamptz` | |
 
 ### `muscle_groups`
@@ -54,6 +55,7 @@ Reference data. Drives the anatomy SVG and the muscle-load charts.
 |--------|------|-------|
 | `id` | `uuid` PK | default `gen_random_uuid()` |
 | `user_id` | `uuid` | `null` = built-in library; set = user's custom exercise |
+| `slug` | `text` unique | Stable identity for built-ins, `null` for custom. The seed upserts on it, and the bundled client copy references it |
 | `name` | `text` | |
 | `aliases` | `text[]` | Search synonyms — `{bench, bp}` |
 | `equipment` | `text` | `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight`, `kettlebell`, `band`, `other` |
@@ -226,6 +228,8 @@ PK: `(user_id, achievement_id)`
 
 Keep these as plain views at first. Only promote to materialized views if the free-tier instance starts showing slow queries — materialized views need a refresh strategy, and that is complexity you do not want early.
 
+All three are created `with (security_invoker = true)`. Without it a view executes as its owner and quietly bypasses the RLS on its base tables, handing every user everyone else's history — the most dangerous single line in the schema.
+
 ## 4. Row Level Security
 
 Pattern, applied to every owned table:
@@ -280,19 +284,23 @@ Client code never writes to `personal_records` or `user_achievements` directly �
 
 ## 6. Seed data
 
-| Dataset | Size | Source |
+| Dataset | Rows | Source |
 |---------|------|--------|
-| `muscle_groups` | ~18 | Hand-written, matched to the anatomy SVG group IDs |
-| `exercises` | ~200 built-ins | Curated list with aliases and equipment tags |
-| `exercise_muscles` | ~600 rows | Primary/secondary mapping with activation weights |
-| `achievements` | 24 badges | 8 milestones, 8 volume, 8 strength |
+| `muscle_groups` | 18 | `data/muscle-groups.ts` — matched to anatomy SVG group IDs |
+| `exercises` | 115 built-ins | `data/exercises.seed.ts` — aliases, equipment, type |
+| `exercise_muscles` | 295 | Activation-weighted mapping, derived from the same file |
+| `achievements` | 24 badges | `data/badges.config.ts` — 8 milestones, 8 volume, 8 strength |
 
-Ship the exercise library **both** as `supabase/seed.sql` and as a typed `data/exercises.seed.ts`. The TS copy is bundled at build time, so search works with zero network calls and the Add Exercise screen is instant offline.
+**One source, two outputs.** The TypeScript files are authoritative; `npm run seed:gen` emits `supabase/seed/reference.sql` from them. Maintaining the library in both SQL and TS by hand stays in sync for about two weeks.
+
+The TS copy is bundled at build time, so exercise search runs with zero network calls and the Add Exercise screen is instant offline.
+
+115 exercises rather than the 200 originally scoped — the list covers every muscle group and equipment type with the movements people actually log. Adding more is editing one array and re-running the generator; padding it now would just be padding.
 
 ## 7. Migration order
 
 ```
-0001_extensions.sql        -- pgcrypto, pg_trgm
+0001_schema.sql            -- hadid schema, pgcrypto, pg_trgm, set_updated_at, grants
 0002_profiles.sql          -- profiles + handle_new_user trigger
 0003_muscle_groups.sql     -- reference table + seed
 0004_exercises.sql         -- exercises, exercise_muscles, search index
