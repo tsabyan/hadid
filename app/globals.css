@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * Phase 0 baseline only. The full token set — colour ramps, type scale,
+ * elevation, motion — lands in Phase 1 (see docs/04-design-system.md).
+ * What is here now is the minimum needed for the shell not to look default:
+ * the system font stack and the warm neutral background.
+ */
+
+:root {
+  --bg: oklch(98.5% 0.004 60);
+  --text: oklch(21% 0.012 60);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter var",
+    system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-numeric: "SF Mono", ui-monospace, "JetBrains Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(16% 0.008 60);
+    --text: oklch(96% 0.004 60);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-text: var(--text);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-numeric);
+}
+
+html {
+  /* Rubber-band scrolling belongs to scroll containers, not the document. */
+  overscroll-behavior-y: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Numbers must never shift width — see docs/04, section 3. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
