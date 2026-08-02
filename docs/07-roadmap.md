@@ -8,12 +8,12 @@ Eight phases. Each ends with something deployable. The order is deliberate: the 
 
 **Goal:** an empty but correct app deployed to a live URL.
 
-- [ ] `create-next-app`, dependencies, `tsconfig` strict
-- [ ] Supabase project created, linked, region chosen
-- [ ] Env vars locally and in Vercel (Production + Preview + Development)
-- [ ] Deployed to Vercel, custom subdomain set
-- [ ] CI workflow: typecheck, lint, build
-- [ ] `.env.example` committed
+- [x] `create-next-app`, dependencies, `tsconfig` strict
+- [x] Supabase project — shares the existing project; owns the `hadid` schema
+- [x] Env vars locally and in Vercel (Production + Preview + Development)
+- [ ] Deployed to Vercel, custom subdomain set *(needs dashboard access)*
+- [x] CI workflow: typecheck, lint, build
+- [x] `.env.example` committed
 
 **Done when:** a push to `main` produces a live deploy and CI is green.
 
@@ -23,13 +23,13 @@ Eight phases. Each ends with something deployable. The order is deliberate: the 
 
 Build this before any screen. Every screen after is assembly.
 
-- [ ] Design tokens in `globals.css` — colour, type, spacing, radii, shadows, both themes
-- [ ] Tailwind v4 theme mapped to the CSS variables
-- [ ] Fonts via `next/font/local` (Inter var fallback), system stack first
-- [ ] Motion presets in `lib/motion.ts`
-- [ ] `components/ui/`: Button · Card · Sheet · Segmented · Chip · Stepper · ListRow · ProgressRing · Skeleton · EmptyState · StatCard
-- [ ] App shell: tab bar, header, safe-area handling, theme switcher
-- [ ] A `/dev/components` gallery route rendering every component in every state and both themes
+- [x] Design tokens in `globals.css` — colour, type, spacing, radii, shadows, both themes
+- [x] Tailwind v4 theme mapped to the CSS variables
+- [ ] Fonts: system stack is live; self-hosted Inter var fallback still to add
+- [x] Motion presets in `lib/motion.ts`
+- [x] `components/ui/`: Button · Card · Sheet · Segmented · Chip · Stepper · ListRow · ProgressRing · Skeleton · EmptyState · StatCard
+- [x] App shell: tab bar, header, safe-area handling, theme switcher
+- [x] A `/dev/components` gallery route rendering every component in every state and both themes
 
 **Done when:** the gallery route passes the section 10 checklist in the design system doc, in both themes, with reduced-motion on and off.
 

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 
+import { themeScript } from '@/components/theme'
+
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -33,7 +35,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Runs before first paint so a dark-theme user never sees a white
+            flash. suppressHydrationWarning above covers the attribute this
+            adds to <html> before React hydrates. */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   )

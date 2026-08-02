@@ -1,38 +1,257 @@
 @import "tailwindcss";
 
 /*
- * Phase 0 baseline only. The full token set — colour ramps, type scale,
- * elevation, motion — lands in Phase 1 (see docs/04-design-system.md).
- * What is here now is the minimum needed for the shell not to look default:
- * the system font stack and the warm neutral background.
+ * `dark:` must follow the same rule the tokens do, or utilities and variables
+ * disagree the moment someone uses the in-app theme switcher: the OS says
+ * light, `data-theme` says dark, and half the screen listens to each.
+ *
+ * Order matters — the explicit `[data-theme="dark"]` branch comes last so it
+ * wins when a user overrides a light OS setting.
  */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/* ==========================================================================
+   Design tokens — see docs/04-design-system.md
+   Calm, premium, iOS-native. Warm neutrals, one muted-clay accent, depth
+   from soft light rather than lines.
+   ========================================================================== */
 
 :root {
+  /* Surfaces */
   --bg: oklch(98.5% 0.004 60);
-  --text: oklch(21% 0.012 60);
+  --surface: oklch(100% 0 0);
+  --surface-sunken: oklch(96.5% 0.005 60);
+  --surface-raised: oklch(100% 0 0);
 
+  /* Text */
+  --text: oklch(21% 0.012 60);
+  --text-secondary: oklch(48% 0.01 60);
+  --text-tertiary: oklch(66% 0.008 60);
+
+  /* Accent — muted clay */
+  --accent: oklch(58% 0.132 32);
+  --accent-hover: oklch(53% 0.138 32);
+  --accent-soft: oklch(94% 0.03 32);
+  --accent-text: oklch(100% 0 0);
+
+  /* Semantic */
+  --success: oklch(62% 0.108 155);
+  --warning: oklch(74% 0.12 78);
+  --danger: oklch(58% 0.15 22);
+
+  /* Lines */
+  --border: oklch(21% 0.012 60 / 0.07);
+  --separator: oklch(21% 0.012 60 / 0.045);
+
+  /* Heat ramp — muscle maps, calendar intensity */
+  --heat-0: var(--surface-sunken);
+  --heat-1: oklch(93% 0.036 32);
+  --heat-2: oklch(85% 0.072 32);
+  --heat-3: oklch(73% 0.108 32);
+  --heat-4: oklch(60% 0.135 32);
+
+  /* Elevation — two layers: tight contact + broad ambient */
+  --shadow-sm: 0 1px 2px oklch(21% 0.012 60 / 0.04),
+    0 1px 3px oklch(21% 0.012 60 / 0.03);
+  --shadow-md: 0 2px 4px oklch(21% 0.012 60 / 0.04),
+    0 4px 12px oklch(21% 0.012 60 / 0.05);
+  --shadow-lg: 0 4px 8px oklch(21% 0.012 60 / 0.04),
+    0 12px 32px oklch(21% 0.012 60 / 0.07);
+  --shadow-xl: 0 8px 16px oklch(21% 0.012 60 / 0.05),
+    0 24px 56px oklch(21% 0.012 60 / 0.1);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+
+  /* Type — system stack resolves to SF Pro on Apple devices, which is the
+     single strongest native signal and costs zero bytes. */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter var",
     system-ui, "Segoe UI", Roboto, sans-serif;
   --font-numeric: "SF Mono", ui-monospace, "JetBrains Mono", monospace;
 }
 
+/*
+ * Dark is rebuilt, not inverted. True black fights the calm tone, so the
+ * darkest surface keeps a warm cast.
+ *
+ * Two selectors, deliberately: the media query covers "follow the system",
+ * and `[data-theme]` lets the in-app switcher override it in both directions.
+ * The `:not([data-theme="light"])` guard is what makes an explicit light
+ * choice win over a dark OS setting.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: oklch(16% 0.008 60);
+    --surface: oklch(20.5% 0.009 60);
+    --surface-sunken: oklch(13.5% 0.007 60);
+    --surface-raised: oklch(24% 0.01 60);
+
     --text: oklch(96% 0.004 60);
+    --text-secondary: oklch(72% 0.008 60);
+    --text-tertiary: oklch(52% 0.008 60);
+
+    --accent: oklch(67% 0.128 32);
+    --accent-hover: oklch(72% 0.13 32);
+    --accent-soft: oklch(30% 0.048 32);
+
+    --success: oklch(70% 0.1 155);
+    --warning: oklch(80% 0.11 78);
+    --danger: oklch(66% 0.14 22);
+
+    --border: oklch(100% 0 0 / 0.09);
+    --separator: oklch(100% 0 0 / 0.06);
+
+    --heat-1: oklch(30% 0.045 32);
+    --heat-2: oklch(40% 0.075 32);
+    --heat-3: oklch(52% 0.105 32);
+    --heat-4: oklch(67% 0.128 32);
   }
 }
 
-@theme inline {
-  --color-bg: var(--bg);
-  --color-text: var(--text);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-numeric);
+:root[data-theme="dark"] {
+  --bg: oklch(16% 0.008 60);
+  --surface: oklch(20.5% 0.009 60);
+  --surface-sunken: oklch(13.5% 0.007 60);
+  --surface-raised: oklch(24% 0.01 60);
+
+  --text: oklch(96% 0.004 60);
+  --text-secondary: oklch(72% 0.008 60);
+  --text-tertiary: oklch(52% 0.008 60);
+
+  --accent: oklch(67% 0.128 32);
+  --accent-hover: oklch(72% 0.13 32);
+  --accent-soft: oklch(30% 0.048 32);
+
+  --success: oklch(70% 0.1 155);
+  --warning: oklch(80% 0.11 78);
+  --danger: oklch(66% 0.14 22);
+
+  --border: oklch(100% 0 0 / 0.09);
+  --separator: oklch(100% 0 0 / 0.06);
+
+  --heat-1: oklch(30% 0.045 32);
+  --heat-2: oklch(40% 0.075 32);
+  --heat-3: oklch(52% 0.105 32);
+  --heat-4: oklch(67% 0.128 32);
 }
 
+/* ==========================================================================
+   Tailwind theme mapping
+   ========================================================================== */
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-raised: var(--surface-raised);
+
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --color-line: var(--border);
+  --color-separator: var(--separator);
+
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-numeric);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+
+  /* Type scale — docs/04 section 3 */
+  --text-overline: 11px;
+  --text-overline--line-height: 14px;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.06em;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 500;
+  --text-caption--letter-spacing: 0.01em;
+
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+
+  --text-subhead: 15px;
+  --text-subhead--line-height: 20px;
+
+  --text-callout: 16px;
+  --text-callout--line-height: 21px;
+
+  --text-body: 17px;
+  --text-body--line-height: 24px;
+  --text-body--letter-spacing: -0.005em;
+
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-headline--font-weight: 600;
+  --text-headline--letter-spacing: -0.01em;
+
+  --text-title-3: 20px;
+  --text-title-3--line-height: 25px;
+  --text-title-3--font-weight: 600;
+  --text-title-3--letter-spacing: -0.01em;
+
+  --text-title-2: 22px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--font-weight: 600;
+  --text-title-2--letter-spacing: -0.015em;
+
+  --text-title-1: 28px;
+  --text-title-1--line-height: 34px;
+  --text-title-1--font-weight: 700;
+  --text-title-1--letter-spacing: -0.02em;
+
+  --text-display: 34px;
+  --text-display--line-height: 41px;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
 html {
-  /* Rubber-band scrolling belongs to scroll containers, not the document. */
+  /* Rubber-band belongs to scroll containers, not the document. */
   overscroll-behavior-y: none;
+  background: var(--bg);
 }
 
 body {
@@ -42,7 +261,74 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Numbers must never shift width — see docs/04, section 3. */
+/* Numbers must never shift width. A countdown whose digits jog left and
+   right is the fastest way to make an app feel amateur. */
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Materials
+   Used for exactly three things: sticky header, tab bar, sheet backdrop.
+   The saturate() is the part that reads as iOS rather than frosted glass.
+   ========================================================================== */
+
+.material-thin {
+  background: color-mix(in oklch, var(--bg) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .material-thin {
+    background: var(--bg);
+  }
+}
+
+/* ==========================================================================
+   Safe areas — the app paints behind the notch and home indicator once
+   installed, so insets are read from the environment rather than guessed.
+   ========================================================================== */
+
+.pt-safe {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.px-safe {
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+
+/* ==========================================================================
+   Reduced motion — transforms become a short crossfade. The rest-timer ring
+   is exempt in its own component: it conveys time, not decoration.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.12s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.12s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus ring — visible for keyboard users, absent for pointer users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Hide scrollbars on horizontal chip/stat rows without disabling scroll. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
