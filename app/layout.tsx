@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 
+import { InstallHint, ServiceWorkerRegistrar } from '@/components/shell/pwa'
 import { themeScript } from '@/components/theme'
 
 import './globals.css'
@@ -9,8 +10,13 @@ export const metadata: Metadata = {
   description: 'Your personal strength tracker.',
   appleWebApp: {
     capable: true,
+    // 'default' keeps the status bar legible against the warm off-white
+    // background. 'black-translucent' would paint content under the clock.
     statusBarStyle: 'default',
     title: 'Hadid',
+  },
+  icons: {
+    apple: '/icons/apple-touch-icon.png',
   },
 }
 
@@ -42,7 +48,11 @@ export default function RootLayout({
             adds to <html> before React hydrates. */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <ServiceWorkerRegistrar />
+        <InstallHint />
+      </body>
     </html>
   )
 }

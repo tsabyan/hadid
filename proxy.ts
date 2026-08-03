@@ -3,12 +3,18 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
 
 /**
+ * Reachable without a session. Everything else redirects to onboarding.
+ *
+ * `/offline` is here because the service worker serves it when a navigation
+ * fails — a redirect to /welcome at that moment would replace a useful
+ * message with a sign-up screen that also cannot load.
+ */
+const PUBLIC_PATHS = ['/welcome', '/auth', '/dev', '/offline']
+
+/**
  * Next 16 renamed `middleware.ts` to `proxy.ts`. The runtime is always Node —
  * `edge` is not supported here and cannot be configured.
  */
-/** Reachable without a session. Everything else redirects to onboarding. */
-const PUBLIC_PATHS = ['/welcome', '/auth', '/dev']
-
 export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request)
   const { pathname } = request.nextUrl

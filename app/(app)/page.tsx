@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Plus, Settings } from 'lucide-react'
 
 import { QuickStats } from '@/components/features/dashboard/quick-stats'
+import { SyncIndicator } from '@/components/shell/sync-indicator'
 import { RoutineList } from '@/components/features/dashboard/routine-list'
 
 import { Card } from '@/components/ui/card'
@@ -21,7 +22,10 @@ export default async function DashboardPage() {
     <main className="flex flex-col gap-6 px-5 pt-safe">
       <header className="flex items-start justify-between pt-3">
         <div>
-          <h1 className="text-title-1">{greeting()}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-title-1">{greeting()}</h1>
+            <SyncIndicator />
+          </div>
           <p className="text-subhead text-text-secondary">
             {new Date().toLocaleDateString(undefined, {
               weekday: 'long',

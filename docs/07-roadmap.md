@@ -79,16 +79,20 @@ The smallest thing that is actually useful: create a routine, run it, see it in 
 
 Comes right after the core loop, because a logger that fails on bad signal is not a logger.
 
-- [ ] IndexedDB store and write queue
-- [ ] Optimistic mutations with queued replay on reconnect
-- [ ] Service worker: app shell precache, stale-while-revalidate for data
-- [ ] Manifest, icons, splash screens, iOS meta tags
-- [ ] Active workout survives reload, backgrounding, and force-quit
-- [ ] Wake Lock during a session
-- [ ] Sync indicator in the header
-- [ ] Add-to-home-screen hint on iOS Safari, shown once
+- [x] IndexedDB store and write queue
+- [x] Optimistic mutations with queued replay on reconnect
+- [x] Service worker: app shell precache. **Not** stale-while-revalidate for data — Supabase responses are never cached, because a cached read would contradict what the write queue is holding
+- [x] Manifest, icons (generated from source), iOS meta tags. No iOS splash screens — they need a dozen device-specific images for a flash of branding
+- [x] Active workout survives reload, backgrounding, and force-quit
+- [x] Wake Lock during a session
+- [x] Sync indicator in the header
+- [x] Add-to-home-screen hint on iOS Safari, shown once
 
 **Done when:** airplane mode for a full workout, then reconnect — every set arrives, nothing duplicates.
+
+The merge that decides this is `lib/offline/merge.ts`, covered by unit tests including the idempotency case. The end-to-end version still needs a real phone in airplane mode.
+
+**Known limitation.** *Starting* a workout needs connectivity — it still runs through a Server Action, which requires the network by definition. Everything after that point is fully offline: sets, deletions, added exercises. Finishing also needs a connection, and says so plainly rather than pretending, because `finish_workout()` detects PRs from what the database can see and closing a session with sets still queued would undercount the workout that just happened.
 
 ---
 

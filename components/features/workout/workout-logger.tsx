@@ -10,17 +10,17 @@ import { Card } from '@/components/ui/card'
 import { Sheet } from '@/components/ui/sheet'
 import { Stepper } from '@/components/ui/stepper'
 import { RestBar } from '@/components/features/workout/rest-bar'
+import { SyncIndicator } from '@/components/shell/sync-indicator'
 import {
   ExercisePicker,
   type PickableExercise,
 } from '@/components/features/exercises/exercise-picker'
-import {
-  addWorkoutExercise,
-  deleteSet,
-  discardWorkout,
-  finishWorkout,
-  logSet,
-} from '@/lib/db/mutations'
+import { discardWorkout } from '@/lib/db/mutations'
+import { clearSession, loadSession, saveSession } from '@/lib/offline/db'
+import { flush, getSyncState, queueOp } from '@/lib/offline/queue'
+import { queueSize } from '@/lib/offline/db'
+import { mergeSessions } from '@/lib/offline/merge'
+import { createClient } from '@/lib/supabase/client'
 import { acquireWakeLock, haptic, unlockAudio } from '@/lib/feedback'
 import { useRestTimer } from '@/lib/stores/rest-timer'
 import { formatVolume, stepFor, unitLabel, type UnitSystem } from '@/lib/calc/units'
@@ -68,6 +68,9 @@ export function WorkoutLogger({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [summary, setSummary] = useState<FinishWorkoutResult | null>(null)
   const [confirmFinish, setConfirmFinish] = useState(false)
+  const [finishError, setFinishError] = useState<string | null>(null)
+
+  const sessionKey = `workout:${workoutId}`
 
   const current = exercises[index]
   const weightStep = stepFor(unit)
@@ -82,6 +85,27 @@ export function WorkoutLogger({
   const startRest = useRestTimer((s) => s.start)
 
   useEffect(() => acquireWakeLock(), [])
+
+  // Mirror the session locally on every change. This is what survives a
+  // force-quit: the server copy may be missing whatever is still queued, so
+  // the local snapshot is the more complete of the two until the queue drains.
+  useEffect(() => {
+    void saveSession(sessionKey, exercises)
+  }, [sessionKey, exercises])
+
+  // On load, fold anything logged offline back in. The server render is
+  // authoritative for what synced; the local snapshot is authoritative for
+  // what has not. Merging by set id makes the union safe to apply twice.
+  useEffect(() => {
+    let cancelled = false
+    void loadSession<LoggerExercise[]>(sessionKey).then((local) => {
+      if (cancelled || !local?.length) return
+      setExercises((fromServer) => mergeSessions(fromServer, local))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionKey])
 
   // Moving to another exercise re-seeds the draft from that exercise's own
   // history. Carrying 100kg from bench over to lateral raises is worse than
@@ -141,15 +165,18 @@ export function WorkoutLogger({
       startRest(current.rest_seconds ?? defaultRestSeconds)
     }
 
-    startTransition(async () => {
-      await logSet({
+    // Durable before it is remote. queueOp resolves once the write is in
+    // IndexedDB; reaching Supabase happens whenever the network allows.
+    void queueOp({
+      kind: 'set.upsert',
+      payload: {
         id,
         workout_exercise_id: current.id,
         set_number: setNumber,
         weight_kg: weight,
         reps,
         is_warmup: isWarmup,
-      })
+      },
     })
   }
 
@@ -157,34 +184,74 @@ export function WorkoutLogger({
     setExercises((list) =>
       list.map((e) => ({ ...e, sets: e.sets.filter((s) => s.id !== setId) })),
     )
-    startTransition(() => deleteSet(setId))
+    void queueOp({ kind: 'set.delete', payload: { id: setId } })
   }
 
   function addExercises(ids: string[]) {
-    startTransition(async () => {
+    // The row id is generated here rather than returned by the server, so the
+    // sets logged against it have something to reference before it syncs.
+    setExercises((list) => {
+      let next = list
       for (const exerciseId of ids) {
         const found = library.find((e) => e.id === exerciseId)
         if (!found) continue
-        const rowId = await addWorkoutExercise(workoutId, exerciseId)
-        setExercises((list) => [
-          ...list,
+
+        const rowId = crypto.randomUUID()
+        void queueOp({
+          kind: 'workout_exercise.create',
+          payload: {
+            id: rowId,
+            workout_id: workoutId,
+            exercise_id: exerciseId,
+            position: next.length,
+          },
+        })
+
+        next = [
+          ...next,
           {
             id: rowId,
             name: found.name,
-            position: list.length,
+            position: next.length,
             rest_seconds: null,
             sets: [],
           },
-        ])
+        ]
       }
+      return next
     })
   }
 
   function finish() {
     setConfirmFinish(false)
+    setFinishError(null)
+
     startTransition(async () => {
-      const result = await finishWorkout(workoutId)
-      setSummary(result)
+      // Every set has to be on the server before the session is closed:
+      // finish_workout detects PRs and evaluates badges from what the database
+      // can see, so finishing with a set still in the queue would silently
+      // undercount the workout that just happened.
+      await flush()
+
+      if (!getSyncState().online || (await queueSize()) > 0) {
+        setFinishError(
+          'Some sets have not synced yet. Reconnect and finish again — your workout is saved on this device.',
+        )
+        return
+      }
+
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('finish_workout', {
+        p_workout_id: workoutId,
+      })
+
+      if (error) {
+        setFinishError(error.message)
+        return
+      }
+
+      await clearSession(sessionKey)
+      setSummary(data as unknown as FinishWorkoutResult)
     })
   }
 
@@ -218,9 +285,12 @@ export function WorkoutLogger({
           </button>
           <div className="min-w-0 flex-1 text-center">
             <p className="text-headline truncate">{workoutName}</p>
-            <p className="text-overline text-text-tertiary uppercase">
-              {allSets.length} sets · {formatVolume(volume, unit)}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-overline text-text-tertiary uppercase">
+                {allSets.length} sets · {formatVolume(volume, unit)}
+              </p>
+              <SyncIndicator />
+            </div>
           </div>
           <button
             onClick={() => setConfirmFinish(true)}
@@ -232,6 +302,12 @@ export function WorkoutLogger({
       </header>
 
       <div className="flex flex-col gap-5 px-5 pt-4">
+        {finishError && (
+          <div className="bg-accent-soft text-accent rounded-lg px-4 py-3">
+            <p className="text-subhead">{finishError}</p>
+          </div>
+        )}
+
         {/* Exercise pager. A row of chips rather than a swipe surface — the
             set list below already scrolls, and two competing gestures in one
             viewport is how a logger loses a rep. */}

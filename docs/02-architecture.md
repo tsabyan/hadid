@@ -127,14 +127,20 @@ Single-user data with client-generated UUIDs, so conflicts are rare. Rule: **las
 
 | Concern | Approach |
 |---------|----------|
-| App shell | Service worker precaches routes, JS, CSS, fonts, icons |
+| App shell | Service worker: network-first for navigation, cache-first for hashed static assets |
 | Exercise library | Bundled as static TS at build time — never needs a fetch |
-| Recent history | Last 90 days mirrored into IndexedDB on load |
-| Active workout | Lives in IndexedDB from the moment it starts; survives a hard reload |
-| Writes | Append to a queue store, replay on `online` event and on app focus |
-| Cache invalidation | `revalidateTag` on the server; IndexedDB mirror refreshed on focus |
+| Active workout | Mirrored to IndexedDB on every change; survives reload and force-quit |
+| Writes | Appended to an ordered queue, replayed on `online` and on visibility change |
+| Supabase reads | **Never cached.** A cached read would contradict what the queue is still holding |
+| Merge on load | Union by client-generated id — `lib/offline/merge.ts`, idempotent by construction |
 
 Anything logged offline must survive a browser force-quit. That means IndexedDB, not memory and not `sessionStorage`.
+
+**Replay is strictly FIFO**, and that ordering is load-bearing: a set references a `workout_exercise`, which references a `workout`. Replaying those out of order produces foreign key violations that look exactly like data loss.
+
+**One op that can never succeed would freeze the queue behind it.** `lib/offline/retry.ts` decides which failures are permanent — constraint violations, RLS denials, and most 4xx get discarded and reported; network failures, 5xx, 408 and 429 are retried.
+
+**What still needs the network:** starting a workout and finishing one. Everything between is offline. Finishing is deliberate rather than incidental — `finish_workout()` computes PRs and badges from what the database can see, so closing a session with sets still queued would undercount the workout that just happened.
 
 ## 6. State ownership
 

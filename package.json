@@ -15,7 +15,8 @@
     "check": "npm run typecheck && npm run lint && npm run build",
     "sql:bundle": "node scripts/bundle-sql.mjs",
     "sql:all": "npm run seed:gen && npm run sql:bundle",
-    "verify:db": "bash scripts/verify-db.sh"
+    "verify:db": "bash scripts/verify-db.sh",
+    "icons:gen": "node scripts/gen-icons.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
