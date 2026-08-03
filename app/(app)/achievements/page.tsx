@@ -1,17 +1,28 @@
-import { Construction } from 'lucide-react'
-
-import { EmptyState } from '@/components/ui/empty-state'
 import { Header } from '@/components/shell/header'
+import { BadgeGrid } from '@/components/features/achievements/badge-grid'
+import { getProfile, listAchievements } from '@/lib/db/queries'
 
-/** Placeholder until Phase 6. Real screen spec is in docs/05-screens.md. */
-export default function BadgesPage() {
+export default async function AchievementsPage() {
+  const [badges, profile] = await Promise.all([
+    listAchievements(),
+    getProfile(),
+  ])
+
   return (
     <>
-      <Header title="Badges" />
-      <EmptyState
-        icon={Construction}
-        title="Coming in Phase 6"
-        description="24 badges across milestones, volume, and strength"
+      <Header title="Achievements" />
+      <BadgeGrid
+        unit={profile?.unit_system ?? 'metric'}
+        badges={badges.map((badge) => ({
+          id: badge.id,
+          category: badge.category,
+          name: badge.name,
+          description: badge.description,
+          metric: badge.metric,
+          threshold: Number(badge.threshold),
+          progress: badge.progress,
+          unlockedAt: badge.unlockedAt,
+        }))}
       />
     </>
   )

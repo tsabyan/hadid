@@ -115,14 +115,16 @@ Period boundaries are computed server-side in `app/(app)/insights/page.tsx`, so 
 
 ## Phase 6 — Achievements
 
-- [ ] 24 badges defined in both `badges.config.ts` and the `achievements` table
-- [ ] `evaluate_achievements()` running on workout finish
-- [ ] Badge grid, filters, progress (Screen 08)
-- [ ] Detail sheet with unlock criteria
-- [ ] Unlock animation in the workout summary
-- [ ] Backfill: evaluating against existing history unlocks correctly for a user who already has data
+- [x] 24 badges defined in both `badges.config.ts` and the `achievements` table
+- [x] `evaluate_achievements()` running on workout finish
+- [x] Badge grid, filters, progress (Screen 08)
+- [x] Detail sheet with unlock criteria
+- [x] Unlock animation in the workout summary
+- [x] Backfill: `evaluate_achievements()` recomputes rather than increments, so it is inherently a backfill. Verified in `npm run verify:db`
 
-**Done when:** a user with 50 historical workouts sees the right badges unlocked, not zero.
+**Done when:** a user with 50 historical workouts sees the right badges unlocked, not zero. ✅
+
+**Badge artwork is a component-layer concern.** `components/features/achievements/badge-icon.tsx` maps badge id → icon and is the single swap point for a custom set. Nothing about imagery lives in the database — the `achievements` table has no icon column, because an emoji stored in Postgres is a placeholder that needs a migration to replace.
 
 ---
 

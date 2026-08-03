@@ -469,6 +469,26 @@ export async function finishWorkout(
   return data as unknown as FinishWorkoutResult
 }
 
+/**
+ * Recomputes badge progress from scratch.
+ *
+ * Not normally needed — finish_workout() re-evaluates everything at the end of
+ * every session, and the function recomputes rather than increments, so it is
+ * inherently a backfill. This exists for the case where history already
+ * exists and the user does not want to wait until their next workout to see
+ * it counted.
+ */
+export async function refreshAchievements() {
+  const { supabase, user } = await requireUser()
+
+  const { error } = await supabase.rpc('evaluate_achievements', {
+    p_user_id: user.id,
+  })
+
+  if (error) throw error
+  revalidatePath('/achievements')
+}
+
 export async function discardWorkout(workoutId: string) {
   const { supabase } = await requireUser()
   const { error } = await supabase.from('workouts').delete().eq('id', workoutId)

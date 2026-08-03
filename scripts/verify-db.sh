@@ -77,6 +77,21 @@ echo "$PRC" | grep -q '"previous_value":null' && pass "baselines marked previous
 UA=$(curl -s "$U/rest/v1/user_achievements?select=achievement_id,progress,unlocked_at&unlocked_at=not.is.null" "${as1[@]}")
 [ "$(echo "$UA" | J "len(d)")" = "1" ] && pass "user_achievements row written" || fail "user_achievements: $UA"
 
+# evaluate_achievements recomputes from scratch rather than incrementing, which
+# is what makes it a backfill: a user who already has history gets correct
+# progress the first time it runs, not zero.
+PROG=$(curl -s "$U/rest/v1/user_achievements?select=achievement_id,progress&achievement_id=eq.set_stacker" "${as1[@]}" | J "d[0]['progress']")
+[ "$PROG" = "3" ] && pass "progress recomputed from history (3 working sets)" || fail "set_stacker progress=$PROG (expected 3)"
+
+VOLP=$(curl -s "$U/rest/v1/user_achievements?select=progress&achievement_id=eq.volume_machine" "${as1[@]}" | J "float(d[0]['progress'])")
+[ "$VOLP" = "1500.0" ] && pass "volume metric matches the trigger total" || fail "volume_machine progress=$VOLP (expected 1500.0)"
+
+echo "== rep_count view column =="
+RC=$(curl -s "$U/rest/v1/v_daily_volume?select=rep_count,set_count" "${as1[@]}")
+echo "$RC" | grep -q '"rep_count"' && pass "v_daily_volume exposes rep_count" || fail "rep_count missing: $RC"
+RV=$(echo "$RC" | J "d[0]['rep_count']")
+[ "$RV" = "15" ] && pass "reps aggregated from sets, warm-up excluded (15)" || fail "rep_count=$RV (expected 15)"
+
 echo "== earned data is read-only to clients =="
 FR=$(curl -s -X POST "$U/rest/v1/personal_records" "${as1[@]}" \
   -d "{\"user_id\":\"$UID1\",\"exercise_id\":\"$EX\",\"record_type\":\"max_weight\",\"value\":999}")
