@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Flame, Timer, TrendingUp } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { HadidMark } from '@/components/brand/mark'
 import { ensureSession } from '@/lib/auth'
 import { completeOnboarding } from '@/lib/db/mutations'
 import { spring } from '@/lib/motion'
@@ -58,14 +59,7 @@ export default function WelcomePage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-5 pt-safe pb-safe">
       <div className="flex flex-1 flex-col items-center justify-center gap-8 py-10">
         <div className="flex flex-col items-center gap-3 text-center">
-          {/* Nudged up for the same reason the generated icon uses a small
-              dy: the ink of ح sits low in its line box, so centring the box
-              leaves the mark looking dropped. */}
-          <div className="bg-accent text-accent-text flex size-[72px] items-center justify-center rounded-[20px] shadow-lg">
-            <span className="translate-y-[-6%] text-[40px] leading-none font-bold">
-              ح
-            </span>
-          </div>
+          <HadidMark size={72} className="shadow-lg" />
           <h1 className="text-display">Hadid</h1>
           <p className="text-callout text-text-secondary">
             Your personal strength tracker
