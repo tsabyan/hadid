@@ -19,6 +19,21 @@ export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request)
   const { pathname } = request.nextUrl
 
+  /*
+   * Redirects apply to page navigations only.
+   *
+   * A Server Action is a POST to the URL of the page that invoked it. When
+   * onboarding signs in anonymously and then calls completeOnboarding(), that
+   * POST goes to /welcome carrying a fresh session — and the "already signed
+   * in, go home" rule below would answer it with a 307 to /. The browser then
+   * receives a redirect where it expected an action result and reports
+   * "An unexpected response was received from the server", which says nothing
+   * about the actual cause.
+   *
+   * Guarding on method is enough: only GET can be a navigation.
+   */
+  if (request.method !== 'GET') return response
+
   const isPublic = PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   )
@@ -48,7 +63,12 @@ export const config = {
      * Everything except static assets and image files. Without the negative
      * match this runs on every CSS and JS request too, which is a session
      * refresh per asset.
+     *
+     * `sw.js` must be excluded explicitly. A service worker script may not be
+     * served from behind a redirect — the spec disallows it — so letting the
+     * unauthenticated redirect apply here makes registration fail outright
+     * with "The script resource is behind a redirect".
      */
-    '/((?!_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw.js|icons/|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?)$).*)',
   ],
 }

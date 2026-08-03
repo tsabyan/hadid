@@ -25,12 +25,19 @@ const BG = '#fbfaf9'
  * icons to arbitrary shapes, and a glyph drawn edge to edge loses its corners
  * on any device that prefers a circle.
  */
+/**
+ * `dy` is 0.16em, not the 0.35em that vertically centres a Latin cap.
+ *
+ * The ink of ح sits low in its line box — centring the box leaves the glyph
+ * visibly below the middle of the tile. This value centres the mark itself,
+ * which is what anyone looking at a home-screen icon actually judges.
+ */
 const icon = (size, { maskable = false } = {}) => {
   const radius = maskable ? size / 2 : size * 0.22
   const glyph = maskable ? size * 0.42 : size * 0.56
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <rect width="${size}" height="${size}" rx="${radius}" fill="${ACCENT}"/>
-  <text x="50%" y="50%" dy="0.35em" text-anchor="middle"
+  <text x="50%" y="50%" dy="0.16em" text-anchor="middle"
         font-family="-apple-system, Segoe UI, Roboto, sans-serif"
         font-size="${glyph}" font-weight="700" fill="${BG}">ح</text>
 </svg>`
