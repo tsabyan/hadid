@@ -332,7 +332,6 @@ export type Database = {
           category: 'milestones' | 'volume' | 'strength'
           name: string
           description: string
-          icon: string
           metric:
             | 'workouts_count'
             | 'total_volume_kg'
@@ -411,7 +410,6 @@ export type Database = {
         Returns: {
           achievement_id: string
           name: string
-          icon: string
           category: string
         }[]
       }
@@ -435,7 +433,6 @@ export type FinishWorkoutResult = {
   new_badges: {
     achievement_id: string
     name: string
-    icon: string
     category: string
   }[]
 }

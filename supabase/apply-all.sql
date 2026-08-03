@@ -47,6 +47,22 @@ begin
 end;
 $$;
 
+-- Joins a text[] for full-text indexing.
+--
+-- `array_to_string` cannot be used directly in a generated column: Postgres
+-- marks it STABLE rather than IMMUTABLE, because for a generic anyarray the
+-- element type's output function might not be immutable. For text[] it always
+-- is, so this wrapper asserts what the generic signature cannot.
+create or replace function hadid.array_to_text(arr text[])
+returns text
+language sql
+immutable
+parallel safe
+set search_path = pg_catalog
+as $$
+  select coalesce(array_to_string(arr, ' '), '');
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Grants
 --
@@ -199,11 +215,11 @@ create table if not exists hadid.exercises (
     check ((user_id is null and slug is not null)
         or (user_id is not null and slug is null)),
 
-  -- Immutable expression, so it can be a generated column. Searching aliases
-  -- as well as names is what lets "bench" and "ohp" find anything at all.
+  -- Searching aliases as well as names is what lets "bench" and "ohp" find
+  -- anything at all. The wrapper in 0001 is required here: array_to_string
+  -- itself is STABLE, and a generated column rejects anything not IMMUTABLE.
   search_vector tsvector generated always as (
-    to_tsvector('english'::regconfig,
-      name || ' ' || coalesce(array_to_string(aliases, ' '), ''))
+    to_tsvector('english'::regconfig, name || ' ' || hadid.array_to_text(aliases))
   ) stored
 );
 
@@ -559,12 +575,14 @@ $$;
 alter table hadid.profiles
   add column if not exists timezone text not null default 'UTC';
 
+-- No icon column. Badge artwork is a presentation concern that belongs with
+-- the design system, keyed by badge id — storing an emoji here would make a
+-- placeholder permanent and force a migration to change a picture.
 create table if not exists hadid.achievements (
   id          text primary key,
   category    text not null check (category in ('milestones','volume','strength')),
   name        text not null,
   description text not null,
-  icon        text not null default '🏅',
   metric      text not null
               check (metric in ('workouts_count','total_volume_kg','streak_days',
                                 'sets_count','pr_count')),
@@ -596,7 +614,7 @@ create index if not exists user_achievements_unlocked_idx
 -- ---------------------------------------------------------------------------
 
 create or replace function hadid.evaluate_achievements(p_user_id uuid)
-returns table (achievement_id text, name text, icon text, category text)
+returns table (achievement_id text, name text, category text)
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
@@ -684,7 +702,7 @@ begin
     returning hadid.user_achievements.achievement_id,
               hadid.user_achievements.unlocked_at
   )
-  select a.id, a.name, a.icon, a.category
+  select a.id, a.name, a.category
   from upserted u
   join hadid.achievements a on a.id = u.achievement_id
   -- now() is the transaction timestamp, so rows stamped by this call carry it
@@ -1480,34 +1498,34 @@ on conflict (exercise_id, muscle_group_id) do update set
   role = excluded.role, activation = excluded.activation;
 
 -- Badge definitions
-insert into hadid.achievements (id, category, name, description, icon, metric, threshold, sort_order) values
-  ('first_rep', 'milestones', 'First Rep', 'Finish your first workout.', '🎯', 'workouts_count', 1, 1),
-  ('getting_serious', 'milestones', 'Getting Serious', 'Finish 5 workouts.', '💪', 'workouts_count', 5, 2),
-  ('gym_regular', 'milestones', 'Gym Regular', 'Finish 25 workouts.', '🏋️', 'workouts_count', 25, 3),
-  ('century_club', 'milestones', 'Century Club', 'Finish 100 workouts.', '💯', 'workouts_count', 100, 4),
-  ('iron_veteran', 'milestones', 'Iron Veteran', 'Finish 250 workouts.', '🎖️', 'workouts_count', 250, 5),
-  ('week_warrior', 'milestones', 'Week Warrior', 'Train 7 days in a row.', '🔥', 'streak_days', 7, 6),
-  ('month_strong', 'milestones', 'Month Strong', 'Hold a 30-day streak.', '📅', 'streak_days', 30, 7),
-  ('unbreakable', 'milestones', 'Unbreakable', 'Hold a 100-day streak.', '⛰️', 'streak_days', 100, 8),
-  ('set_stacker', 'volume', 'Set Stacker', 'Log 100 working sets.', '📚', 'sets_count', 100, 1),
-  ('set_legend', 'volume', 'Set Legend', 'Log 500 working sets.', '🗂️', 'sets_count', 500, 2),
-  ('rep_machine', 'volume', 'Rep Machine', 'Log 2,000 working sets.', '⚙️', 'sets_count', 2000, 3),
-  ('set_immortal', 'volume', 'Set Immortal', 'Log 5,000 working sets.', '♾️', 'sets_count', 5000, 4),
-  ('volume_machine', 'volume', 'Volume Machine', 'Move 10,000 kg in total.', '📦', 'total_volume_kg', 10000, 5),
-  ('ton_lifter', 'volume', 'Ton Lifter', 'Move 50,000 kg in total.', '🏗️', 'total_volume_kg', 50000, 6),
-  ('heavy_hauler', 'volume', 'Heavy Hauler', 'Move 250,000 kg in total.', '🚛', 'total_volume_kg', 250000, 7),
-  ('mountain_mover', 'volume', 'Mountain Mover', 'Move 1,000,000 kg in total.', '🏔️', 'total_volume_kg', 1000000, 8),
-  ('record_breaker', 'strength', 'Record Breaker', 'Set your first personal record.', '🥇', 'pr_count', 1, 1),
-  ('pr_hunter', 'strength', 'PR Hunter', 'Set 5 personal records.', '🏹', 'pr_count', 5, 2),
-  ('record_machine', 'strength', 'Record Machine', 'Set 15 personal records.', '🤖', 'pr_count', 15, 3),
-  ('pr_collector', 'strength', 'PR Collector', 'Set 30 personal records.', '🗃️', 'pr_count', 30, 4),
-  ('relentless', 'strength', 'Relentless', 'Set 60 personal records.', '⚡', 'pr_count', 60, 5),
-  ('pr_addict', 'strength', 'PR Addict', 'Set 100 personal records.', '🎰', 'pr_count', 100, 6),
-  ('iron_will', 'strength', 'Iron Will', 'Set 200 personal records.', '🛡️', 'pr_count', 200, 7),
-  ('immortal', 'strength', 'Immortal', 'Set 500 personal records.', '👑', 'pr_count', 500, 8)
+insert into hadid.achievements (id, category, name, description, metric, threshold, sort_order) values
+  ('first_rep', 'milestones', 'First Rep', 'Finish your first workout.', 'workouts_count', 1, 1),
+  ('getting_serious', 'milestones', 'Getting Serious', 'Finish 5 workouts.', 'workouts_count', 5, 2),
+  ('gym_regular', 'milestones', 'Gym Regular', 'Finish 25 workouts.', 'workouts_count', 25, 3),
+  ('century_club', 'milestones', 'Century Club', 'Finish 100 workouts.', 'workouts_count', 100, 4),
+  ('iron_veteran', 'milestones', 'Iron Veteran', 'Finish 250 workouts.', 'workouts_count', 250, 5),
+  ('week_warrior', 'milestones', 'Week Warrior', 'Train 7 days in a row.', 'streak_days', 7, 6),
+  ('month_strong', 'milestones', 'Month Strong', 'Hold a 30-day streak.', 'streak_days', 30, 7),
+  ('unbreakable', 'milestones', 'Unbreakable', 'Hold a 100-day streak.', 'streak_days', 100, 8),
+  ('set_stacker', 'volume', 'Set Stacker', 'Log 100 working sets.', 'sets_count', 100, 1),
+  ('set_legend', 'volume', 'Set Legend', 'Log 500 working sets.', 'sets_count', 500, 2),
+  ('rep_machine', 'volume', 'Rep Machine', 'Log 2,000 working sets.', 'sets_count', 2000, 3),
+  ('set_immortal', 'volume', 'Set Immortal', 'Log 5,000 working sets.', 'sets_count', 5000, 4),
+  ('volume_machine', 'volume', 'Volume Machine', 'Move 10,000 kg in total.', 'total_volume_kg', 10000, 5),
+  ('ton_lifter', 'volume', 'Ton Lifter', 'Move 50,000 kg in total.', 'total_volume_kg', 50000, 6),
+  ('heavy_hauler', 'volume', 'Heavy Hauler', 'Move 250,000 kg in total.', 'total_volume_kg', 250000, 7),
+  ('mountain_mover', 'volume', 'Mountain Mover', 'Move 1,000,000 kg in total.', 'total_volume_kg', 1000000, 8),
+  ('record_breaker', 'strength', 'Record Breaker', 'Set your first personal record.', 'pr_count', 1, 1),
+  ('pr_hunter', 'strength', 'PR Hunter', 'Set 5 personal records.', 'pr_count', 5, 2),
+  ('record_machine', 'strength', 'Record Machine', 'Set 15 personal records.', 'pr_count', 15, 3),
+  ('pr_collector', 'strength', 'PR Collector', 'Set 30 personal records.', 'pr_count', 30, 4),
+  ('relentless', 'strength', 'Relentless', 'Set 60 personal records.', 'pr_count', 60, 5),
+  ('pr_addict', 'strength', 'PR Addict', 'Set 100 personal records.', 'pr_count', 100, 6),
+  ('iron_will', 'strength', 'Iron Will', 'Set 200 personal records.', 'pr_count', 200, 7),
+  ('immortal', 'strength', 'Immortal', 'Set 500 personal records.', 'pr_count', 500, 8)
 on conflict (id) do update set
   category = excluded.category, name = excluded.name,
-  description = excluded.description, icon = excluded.icon,
+  description = excluded.description,
   metric = excluded.metric, threshold = excluded.threshold,
   sort_order = excluded.sort_order;
 

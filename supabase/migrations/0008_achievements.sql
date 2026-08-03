@@ -9,12 +9,14 @@
 alter table hadid.profiles
   add column if not exists timezone text not null default 'UTC';
 
+-- No icon column. Badge artwork is a presentation concern that belongs with
+-- the design system, keyed by badge id — storing an emoji here would make a
+-- placeholder permanent and force a migration to change a picture.
 create table if not exists hadid.achievements (
   id          text primary key,
   category    text not null check (category in ('milestones','volume','strength')),
   name        text not null,
   description text not null,
-  icon        text not null default '🏅',
   metric      text not null
               check (metric in ('workouts_count','total_volume_kg','streak_days',
                                 'sets_count','pr_count')),
@@ -46,7 +48,7 @@ create index if not exists user_achievements_unlocked_idx
 -- ---------------------------------------------------------------------------
 
 create or replace function hadid.evaluate_achievements(p_user_id uuid)
-returns table (achievement_id text, name text, icon text, category text)
+returns table (achievement_id text, name text, category text)
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
@@ -134,7 +136,7 @@ begin
     returning hadid.user_achievements.achievement_id,
               hadid.user_achievements.unlocked_at
   )
-  select a.id, a.name, a.icon, a.category
+  select a.id, a.name, a.category
   from upserted u
   join hadid.achievements a on a.id = u.achievement_id
   -- now() is the transaction timestamp, so rows stamped by this call carry it

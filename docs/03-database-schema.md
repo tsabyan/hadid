@@ -202,7 +202,6 @@ Static badge definitions. Reference data, mirrored in `data/badges.config.ts` fo
 | `id` | `text` PK | `'first_rep'`, `'century_club'` |
 | `category` | `text` | `milestones` \| `volume` \| `strength` |
 | `name` / `description` | `text` | |
-| `icon` | `text` | emoji or icon key |
 | `threshold` | `numeric` | target value |
 | `metric` | `text` | `workouts_count`, `total_volume_kg`, `streak_days`, `sets_count`, `pr_count` |
 | `sort_order` | `int` | |

@@ -33,6 +33,22 @@ begin
 end;
 $$;
 
+-- Joins a text[] for full-text indexing.
+--
+-- `array_to_string` cannot be used directly in a generated column: Postgres
+-- marks it STABLE rather than IMMUTABLE, because for a generic anyarray the
+-- element type's output function might not be immutable. For text[] it always
+-- is, so this wrapper asserts what the generic signature cannot.
+create or replace function hadid.array_to_text(arr text[])
+returns text
+language sql
+immutable
+parallel safe
+set search_path = pg_catalog
+as $$
+  select coalesce(array_to_string(arr, ' '), '');
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Grants
 --

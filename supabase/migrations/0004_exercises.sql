@@ -28,11 +28,11 @@ create table if not exists hadid.exercises (
     check ((user_id is null and slug is not null)
         or (user_id is not null and slug is null)),
 
-  -- Immutable expression, so it can be a generated column. Searching aliases
-  -- as well as names is what lets "bench" and "ohp" find anything at all.
+  -- Searching aliases as well as names is what lets "bench" and "ohp" find
+  -- anything at all. The wrapper in 0001 is required here: array_to_string
+  -- itself is STABLE, and a generated column rejects anything not IMMUTABLE.
   search_vector tsvector generated always as (
-    to_tsvector('english'::regconfig,
-      name || ' ' || coalesce(array_to_string(aliases, ' '), ''))
+    to_tsvector('english'::regconfig, name || ' ' || hadid.array_to_text(aliases))
   ) stored
 );
 

@@ -116,18 +116,18 @@ w(
 // --------------------------------------------------------------- achievements
 w('-- Badge definitions')
 w(
-  'insert into hadid.achievements (id, category, name, description, icon, metric, threshold, sort_order) values',
+  'insert into hadid.achievements (id, category, name, description, metric, threshold, sort_order) values',
 )
 w(
   BADGES.map(
     (b) =>
-      `  (${q(b.id)}, ${q(b.category)}, ${q(b.name)}, ${q(b.description)}, ${q(b.icon)}, ${q(b.metric)}, ${b.threshold}, ${b.sortOrder})`,
+      `  (${q(b.id)}, ${q(b.category)}, ${q(b.name)}, ${q(b.description)}, ${q(b.metric)}, ${b.threshold}, ${b.sortOrder})`,
   ).join(',\n'),
 )
 w(
   'on conflict (id) do update set',
   '  category = excluded.category, name = excluded.name,',
-  '  description = excluded.description, icon = excluded.icon,',
+  '  description = excluded.description,',
   '  metric = excluded.metric, threshold = excluded.threshold,',
   '  sort_order = excluded.sort_order;',
   '',
