@@ -63,7 +63,16 @@ begin
 end;
 $$;
 
--- The client calls this through PostgREST rather than writing ended_at itself.
+-- Postgres grants EXECUTE on every new function to PUBLIC, and PUBLIC
+-- includes anon and authenticated. Revoking from those two roles by name
+-- looks right and does nothing — the grant that actually matters is the
+-- implicit one. Revoke from PUBLIC first, then hand execute back explicitly.
+revoke execute on function hadid.detect_prs(uuid) from public, anon, authenticated;
+revoke execute on function hadid.evaluate_achievements(uuid) from public, anon, authenticated;
+revoke execute on function hadid.finish_workout(uuid) from public, anon, authenticated;
+
+-- The client calls this instead of writing ended_at itself. detect_prs stays
+-- unreachable: it is called only from inside finish_workout, which runs as
+-- the definer and therefore does not need the caller to hold the grant.
 grant execute on function hadid.finish_workout(uuid) to authenticated;
 grant execute on function hadid.evaluate_achievements(uuid) to authenticated;
-revoke execute on function hadid.detect_prs(uuid) from anon, authenticated;

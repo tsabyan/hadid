@@ -50,6 +50,11 @@ returns table (
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
+-- The RETURNS TABLE columns are named after the columns they carry — reps,
+-- value, exercise_id — which makes every bare reference below ambiguous
+-- between an output parameter and a table column. This directive resolves
+-- them to the column, which is what every one of them means.
+#variable_conflict use_column
 declare
   v_user uuid;
 begin
@@ -59,6 +64,14 @@ begin
 
   if v_user is null then
     return;
+  end if;
+
+  -- Defence in depth. This function is revoked from client roles below, but
+  -- it is security definer and writes records for whoever owns the workout —
+  -- so if a grant is ever restored by accident, it must still refuse to write
+  -- to somebody else's history.
+  if auth.uid() is not null and auth.uid() <> v_user then
+    raise exception 'not your workout';
   end if;
 
   return query

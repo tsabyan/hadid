@@ -40,15 +40,23 @@ The gallery route is not optional. Without it, component states get discovered i
 ## Phase 2 — Data layer
 
 - [x] Migrations `0001`–`0011` written
-- [ ] RLS policies written for every table — **still to verify** by reading another user's rows
+- [x] RLS policies on every table, verified against the live database with two anonymous sessions
 - [x] Seed data: 18 muscle groups, 115 exercises, 295 muscle mappings, 24 badges — generated from `data/*.ts`
 - [x] `types/database.ts` — hand-written to match the migrations; regenerate from the dashboard after any schema change
 - [x] Supabase clients: browser, server, proxy
 - [x] `lib/db/queries.ts` and `lib/db/mutations.ts` typed
-- [ ] Anonymous auth — `lib/auth.ts` written, **not yet exercised** against the live project
+- [x] Anonymous auth working end to end, verified against the live project
 - [x] Calc modules with unit tests: `volume` · `prs` · `streaks` · `muscle-load` · `units` (32 tests)
 
-**Done when:** two anonymous sessions cannot see each other's data — tested, not assumed — and the calc functions pass their tests.
+**Done when:** two anonymous sessions cannot see each other's data — tested, not assumed — and the calc functions pass their tests. ✅
+
+`npm run verify:db` is that test. It found three defects that typecheck, lint, and vitest could not see:
+
+1. `array_to_string` is STABLE, so the `search_vector` generated column was rejected outright.
+2. Both `RETURNS TABLE` functions raised `42702 column reference is ambiguous` — the output parameters are named after the columns they carry.
+3. `detect_prs` was callable by any authenticated user. Postgres grants EXECUTE to PUBLIC on every new function, so revoking from `anon, authenticated` by name did nothing. Since the function is `security definer` and writes records for whoever owns the workout, only the ambiguity bug was preventing a write into another user's history.
+
+None of these were visible without a real Postgres. Run it after any schema change.
 
 ---
 
@@ -56,12 +64,12 @@ The gallery route is not optional. Without it, component states get discovered i
 
 The smallest thing that is actually useful: create a routine, run it, see it in history.
 
-- [ ] Onboarding (Screen 01)
-- [ ] Dashboard shell with real stats (Screen 02)
-- [ ] Add Exercise with search and filters (Screen 03)
-- [ ] Edit Routine with drag-to-reorder (Screen 04)
-- [ ] Active Workout with set logging and the rest timer (Screen 05)
-- [ ] `finish_workout()` wired to the summary sheet
+- [x] Onboarding (Screen 01)
+- [x] Dashboard shell with real stats (Screen 02)
+- [x] Add Exercise with search and filters (Screen 03) — built as a sheet, not a route
+- [x] Edit Routine with drag-to-reorder (Screen 04)
+- [x] Active Workout with set logging and the rest timer (Screen 05)
+- [x] `finish_workout()` wired to the summary sheet
 
 **Done when:** you can complete a real workout at the gym, on your phone, and the data is correct afterward. Do this before writing another line — a week of real use will change several assumptions in these docs.
 

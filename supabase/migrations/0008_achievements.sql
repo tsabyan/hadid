@@ -52,6 +52,11 @@ returns table (achievement_id text, name text, category text)
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
+-- Same reason as detect_prs: the RETURNS TABLE columns are named after the
+-- columns they carry, so `achievement_id`, `name` and `category` are each
+-- ambiguous between an output parameter and a real column. Every one of them
+-- means the column.
+#variable_conflict use_column
 declare
   v_tz       text;
   v_workouts numeric;

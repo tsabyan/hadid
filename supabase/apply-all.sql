@@ -488,6 +488,11 @@ returns table (
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
+-- The RETURNS TABLE columns are named after the columns they carry — reps,
+-- value, exercise_id — which makes every bare reference below ambiguous
+-- between an output parameter and a table column. This directive resolves
+-- them to the column, which is what every one of them means.
+#variable_conflict use_column
 declare
   v_user uuid;
 begin
@@ -497,6 +502,14 @@ begin
 
   if v_user is null then
     return;
+  end if;
+
+  -- Defence in depth. This function is revoked from client roles below, but
+  -- it is security definer and writes records for whoever owns the workout —
+  -- so if a grant is ever restored by accident, it must still refuse to write
+  -- to somebody else's history.
+  if auth.uid() is not null and auth.uid() <> v_user then
+    raise exception 'not your workout';
   end if;
 
   return query
@@ -618,6 +631,11 @@ returns table (achievement_id text, name text, category text)
 language plpgsql
 security definer set search_path = hadid, pg_temp
 as $$
+-- Same reason as detect_prs: the RETURNS TABLE columns are named after the
+-- columns they carry, so `achievement_id`, `name` and `category` are each
+-- ambiguous between an output parameter and a real column. Every one of them
+-- means the column.
+#variable_conflict use_column
 declare
   v_tz       text;
   v_workouts numeric;
@@ -1023,10 +1041,19 @@ begin
 end;
 $$;
 
--- The client calls this through PostgREST rather than writing ended_at itself.
+-- Postgres grants EXECUTE on every new function to PUBLIC, and PUBLIC
+-- includes anon and authenticated. Revoking from those two roles by name
+-- looks right and does nothing — the grant that actually matters is the
+-- implicit one. Revoke from PUBLIC first, then hand execute back explicitly.
+revoke execute on function hadid.detect_prs(uuid) from public, anon, authenticated;
+revoke execute on function hadid.evaluate_achievements(uuid) from public, anon, authenticated;
+revoke execute on function hadid.finish_workout(uuid) from public, anon, authenticated;
+
+-- The client calls this instead of writing ended_at itself. detect_prs stays
+-- unreachable: it is called only from inside finish_workout, which runs as
+-- the definer and therefore does not need the caller to hold the grant.
 grant execute on function hadid.finish_workout(uuid) to authenticated;
 grant execute on function hadid.evaluate_achievements(uuid) to authenticated;
-revoke execute on function hadid.detect_prs(uuid) from anon, authenticated;
 
 -- ===========================================================================
 -- seed/reference.sql
