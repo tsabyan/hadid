@@ -371,6 +371,7 @@ export type Database = {
           volume_kg: number | null
           set_count: number | null
           duration_seconds: number | null
+          rep_count: number | null
         }
         Relationships: []
       }

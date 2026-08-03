@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Sheet } from '@/components/ui/sheet'
 import { Stepper } from '@/components/ui/stepper'
 import { RestBar } from '@/components/features/workout/rest-bar'
+import { MuscleMapPair } from '@/components/anatomy/muscle-map'
 import { SyncIndicator } from '@/components/shell/sync-indicator'
 import {
   ExercisePicker,
@@ -25,6 +26,7 @@ import { acquireWakeLock, haptic, unlockAudio } from '@/lib/feedback'
 import { useRestTimer } from '@/lib/stores/rest-timer'
 import { formatVolume, stepFor, unitLabel, type UnitSystem } from '@/lib/calc/units'
 import { totalVolume } from '@/lib/calc/volume'
+import { exerciseActivation } from '@/lib/calc/muscle-load'
 import { spring } from '@/lib/motion'
 import type { FinishWorkoutResult } from '@/types/database'
 import { cn } from '@/lib/utils/cn'
@@ -40,6 +42,8 @@ export type LoggedSet = {
 export type LoggerExercise = {
   id: string
   name: string
+  /** Built-in library slug, or null for a custom exercise. Drives the heat map. */
+  slug: string | null
   position: number
   rest_seconds: number | null
   sets: LoggedSet[]
@@ -212,6 +216,7 @@ export function WorkoutLogger({
           {
             id: rowId,
             name: found.name,
+            slug: found.slug,
             position: next.length,
             rest_seconds: null,
             sets: [],
@@ -337,6 +342,18 @@ export function WorkoutLogger({
             <ChevronRight size={20} />
           </button>
         </div>
+
+        {/* Live activation for the current exercise. Not volume-weighted —
+            this answers "what am I about to train", not "what have I
+            trained", so it reads the same for the first set and the fifth. */}
+        {current.slug && (
+          <div className="h-[140px]">
+            <MuscleMapPair
+              load={exerciseActivation(current.slug)}
+              className="h-full"
+            />
+          </div>
+        )}
 
         {current.sets.length > 0 && (
           <section className="flex flex-col gap-2">

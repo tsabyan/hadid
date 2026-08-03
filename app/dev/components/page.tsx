@@ -14,6 +14,8 @@ import { Sheet } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatCard } from '@/components/ui/stat-card'
 import { Stepper } from '@/components/ui/stepper'
+import { MuscleMapPair } from '@/components/anatomy/muscle-map'
+import { VolumeChart } from '@/components/charts/volume-chart'
 import { ThemeSwitcher } from '@/components/theme'
 import { Header } from '@/components/shell/header'
 
@@ -166,6 +168,48 @@ export default function ComponentGallery() {
             </ProgressRing>
             <ProgressRing progress={1} size={56} strokeWidth={5} />
           </div>
+        </Section>
+
+        <Section title="Anatomy heat map">
+          <Card>
+            <div className="h-[190px]">
+              <MuscleMapPair
+                load={{ chest: 1, triceps: 0.5, front_delts: 0.5, abs: 0.2 }}
+                className="h-full"
+              />
+            </div>
+          </Card>
+          <Card>
+            <div className="h-[190px]">
+              <MuscleMapPair load={{}} className="h-full" />
+            </div>
+          </Card>
+        </Section>
+
+        <Section title="Volume chart">
+          <Card>
+            <VolumeChart
+              unit="metric"
+              points={[
+                { day: '2026-07-06', volume: 4200, sets: 18, label: 'Mon 6' },
+                { day: '2026-07-07', volume: 0, sets: 0, label: 'Tue 7' },
+                { day: '2026-07-08', volume: 6100, sets: 24, label: 'Wed 8' },
+                { day: '2026-07-09', volume: 3300, sets: 14, label: 'Thu 9' },
+                { day: '2026-07-10', volume: 7400, sets: 26, label: 'Fri 10' },
+                { day: '2026-07-11', volume: 0, sets: 0, label: 'Sat 11' },
+                { day: '2026-07-12', volume: 5200, sets: 20, label: 'Sun 12' },
+              ]}
+            />
+          </Card>
+          <Card>
+            <VolumeChart
+              unit="metric"
+              points={[
+                { day: '2026-07-06', volume: 0, sets: 0, label: 'Mon 6' },
+                { day: '2026-07-07', volume: 0, sets: 0, label: 'Tue 7' },
+              ]}
+            />
+          </Card>
         </Section>
 
         <Section title="Heat ramp">

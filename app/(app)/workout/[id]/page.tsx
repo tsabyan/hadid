@@ -25,6 +25,7 @@ export default async function WorkoutPage({
       name:
         (row.exercise as unknown as { name: string } | null)?.name ??
         'Unknown exercise',
+      slug: (row.exercise as unknown as { slug: string | null } | null)?.slug ?? null,
       position: row.position,
       rest_seconds: row.rest_seconds,
       sets: [...row.sets]

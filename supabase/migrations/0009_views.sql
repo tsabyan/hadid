@@ -8,18 +8,43 @@
 -- security_invoker, which is why it is set explicitly here. Without it a view
 -- runs as its owner and quietly hands every user everyone else's history.
 
+-- Reps are aggregated from `sets` rather than derived from set_count, because
+-- "reps this week" is a headline metric and set count is not a stand-in for
+-- it: three sets of five and three sets of fifteen are not the same week.
+--
+-- Written as a join rather than a correlated subquery — a subquery referencing
+-- p.timezone inside a grouped select would need it in the GROUP BY, and that
+-- is the kind of thing that works until someone adds a column.
 create or replace view hadid.v_daily_volume
 with (security_invoker = true) as
-select w.user_id,
-       (w.started_at at time zone coalesce(p.timezone, 'UTC'))::date as day,
-       count(distinct w.id)                as workout_count,
-       coalesce(sum(w.total_volume_kg), 0) as volume_kg,
-       coalesce(sum(w.total_sets), 0)      as set_count,
-       coalesce(sum(w.duration_seconds), 0) as duration_seconds
-from hadid.workouts w
-left join hadid.profiles p on p.id = w.user_id
-where w.ended_at is not null
-group by w.user_id, 2;
+with sessions as (
+  select w.id,
+         w.user_id,
+         (w.started_at at time zone coalesce(p.timezone, 'UTC'))::date as day,
+         w.total_volume_kg,
+         w.total_sets,
+         w.duration_seconds
+  from hadid.workouts w
+  left join hadid.profiles p on p.id = w.user_id
+  where w.ended_at is not null
+),
+reps as (
+  select we.workout_id, sum(s.reps) as reps
+  from hadid.sets s
+  join hadid.workout_exercises we on we.id = s.workout_exercise_id
+  where s.is_warmup = false
+  group by we.workout_id
+)
+select s.user_id,
+       s.day,
+       count(distinct s.id)                 as workout_count,
+       coalesce(sum(s.total_volume_kg), 0)  as volume_kg,
+       coalesce(sum(s.total_sets), 0)       as set_count,
+       coalesce(sum(s.duration_seconds), 0) as duration_seconds,
+       coalesce(sum(r.reps), 0)             as rep_count
+from sessions s
+left join reps r on r.workout_id = s.id
+group by s.user_id, s.day;
 
 create or replace view hadid.v_muscle_load
 with (security_invoker = true) as

@@ -98,14 +98,18 @@ The merge that decides this is `lib/offline/merge.ts`, covered by unit tests inc
 
 ## Phase 5 — Analytics screens
 
-- [ ] Anatomy SVG component: front/back, group IDs matching `muscle_groups.svg_group`
-- [ ] Heat-map tinting from activation-weighted volume
-- [ ] History Calendar (Screen 06)
-- [ ] Volume bar chart + trend line, hand-written SVG
-- [ ] Insights (Screen 07)
-- [ ] PR detection surfaced in the banner and the finish sheet
+- [x] Anatomy SVG component: front/back, group IDs matching `muscle_groups.svg_group`
+- [x] Heat-map tinting from activation-weighted volume
+- [x] History Calendar (Screen 06)
+- [x] Volume bar chart + trend line, hand-written SVG
+- [x] Insights (Screen 07)
+- [x] PR detection surfaced in the banner and the finish sheet
 
 **Done when:** charts render correctly for a week, a month, an empty period, and a single-workout period. Off-by-one week boundaries are the usual bug here — test `week_starts_on` both ways.
+
+Period boundaries are computed server-side in `app/(app)/insights/page.tsx`, so the query and the chart cannot disagree about where a week starts. The empty-period case is handled explicitly in both the chart and the muscle map, and both appear in `/dev/components`.
+
+**Requires a schema change.** `v_daily_volume` gained a `rep_count` column: Insights showed a "Reps" headline that was actually set count, and three sets of five is not the same week as three sets of fifteen. Re-run `apply-all.sql`.
 
 ---
 
