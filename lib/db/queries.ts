@@ -64,6 +64,7 @@ export async function getCurrentRoutineVersion(routineId: string) {
     .from('routine_versions')
     .select(
       `id, version, routine_id,
+       routine:routines(name),
        routine_exercises(
          id, position, rest_seconds, superset_with_next, notes,
          exercise:exercises(id, name, slug, equipment, type, is_unilateral),
@@ -76,6 +77,32 @@ export async function getCurrentRoutineVersion(routineId: string) {
 
   if (error) throw error
   return data
+}
+
+/**
+ * Whether any workout has been logged against this routine.
+ *
+ * Decides if the editor offers "new version" at all. Head-only count, so it
+ * costs an index probe rather than shipping rows the page will never render.
+ */
+export async function routineHasHistory(routineId: string): Promise<boolean> {
+  const supabase = await createClient()
+
+  const { data: versions } = await supabase
+    .from('routine_versions')
+    .select('id')
+    .eq('routine_id', routineId)
+
+  const ids = (versions ?? []).map((v) => v.id)
+  if (ids.length === 0) return false
+
+  const { count } = await supabase
+    .from('workouts')
+    .select('id', { count: 'exact', head: true })
+    .in('routine_version_id', ids)
+    .not('ended_at', 'is', null)
+
+  return (count ?? 0) > 0
 }
 
 export async function getActiveWorkout() {
