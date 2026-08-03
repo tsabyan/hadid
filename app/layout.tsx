@@ -15,9 +15,11 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Hadid',
   },
-  icons: {
-    apple: '/icons/apple-touch-icon.png',
-  },
+  // No `icons` block, deliberately. Defining one suppresses Next's
+  // file-convention injection entirely: a single `apple` entry here was enough
+  // to stop <link rel="icon"> being emitted at all, so app/icon.png was served
+  // on request but never referenced by the page. app/icon.png and
+  // app/apple-icon.png now speak for themselves.
 }
 
 /**
